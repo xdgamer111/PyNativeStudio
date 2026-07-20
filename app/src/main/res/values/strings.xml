@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PyNative Studio</string>
+    <string name="new_file">New</string>
+    <string name="open_file">Open</string>
+    <string name="save_file">Save</string>
+    <string name="save_as">Save as</string>
+    <string name="run">Run</string>
+    <string name="stop">Stop</string>
+</resources>

@@ -1,0 +1,17 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/action_run" android:title="Run" android:icon="@android:drawable/ic_media_play" app:showAsAction="always" />
+    <item android:id="@+id/action_stop" android:title="Stop" android:icon="@android:drawable/ic_media_pause" app:showAsAction="always" />
+    <item android:id="@+id/action_new" android:title="New file" />
+    <item android:id="@+id/action_open" android:title="Open file" />
+    <item android:id="@+id/action_save" android:title="Save" />
+    <item android:id="@+id/action_save_as" android:title="Save as" />
+    <item android:id="@+id/action_rename" android:title="Rename tab" />
+    <item android:id="@+id/action_delete" android:title="Delete file" />
+    <item android:id="@+id/action_find" android:title="Find and replace" />
+    <item android:id="@+id/action_undo" android:title="Undo" />
+    <item android:id="@+id/action_redo" android:title="Redo" />
+    <item android:id="@+id/action_examples" android:title="Examples" />
+    <item android:id="@+id/action_import_project" android:title="Import project ZIP" />
+    <item android:id="@+id/action_export_project" android:title="Export project ZIP" />
+    <item android:id="@+id/action_settings" android:title="Editor settings" />
+</menu>
