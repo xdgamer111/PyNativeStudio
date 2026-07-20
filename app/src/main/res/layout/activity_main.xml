@@ -25,7 +25,7 @@
                 <ImageButton android:id="@+id/clearConsole" android:layout_width="40dp" android:layout_height="40dp" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Clear console" android:src="@android:drawable/ic_menu_close_clear_cancel" />
             </LinearLayout>
             <ScrollView android:id="@+id/consoleScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
-                <TextView android:id="@+id/console" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="120dp" android:fontFamily="monospace" android:padding="12dp" android:textIsSelectable="true" android:textSize="13sp" />
+                <TextView android:id="@+id/console" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="match_parent" android:fontFamily="monospace" android:padding="12dp" android:textIsSelectable="true" android:textSize="13sp" />
             </ScrollView>
             <com.google.android.material.textfield.TextInputLayout android:id="@+id/inputLayout" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" android:hint="Program input">
                 <com.google.android.material.textfield.TextInputEditText android:id="@+id/consoleInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:imeOptions="actionDone" />

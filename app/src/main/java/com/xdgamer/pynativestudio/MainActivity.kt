@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
         rememberRecent(uri); renderTabs(); Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
     }
     private fun rememberRecent(uri: Uri) {
-        val recent = prefs.getStringSet("recent", emptySet())!!.toMutableSet(); recent += uri.toString(); prefs.edit().putStringSet("recent", recent.toList().takeLast(12).toSet()).apply()
+        val recent = prefs.getStringSet("recent", emptySet())!!.toMutableSet(); recent += uri.toString(); prefs.edit().putStringSet("recent", recent.takeLast(12).toSet()).apply()
     }
     private fun promptRename() {
         val field = EditText(this).apply { setText(tabs[active].title) }
