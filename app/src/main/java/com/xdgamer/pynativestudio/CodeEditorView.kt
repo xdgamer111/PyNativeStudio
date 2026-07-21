@@ -211,6 +211,38 @@ class CodeEditorView @JvmOverloads constructor(
 
     fun text(): String = editText.text.toString()
 
+    fun cursorPosition(): Int = editText.selectionStart.coerceAtLeast(0)
+
+    fun scrollPositionY(): Int = editText.scrollY
+
+    fun restorePosition(cursorPosition: Int, scrollY: Int) {
+        val safeCursor = cursorPosition.coerceIn(0, editText.length())
+        editText.setSelection(safeCursor)
+        editText.post { editText.scrollTo(editText.scrollX, scrollY.coerceAtLeast(0)) }
+    }
+
+    fun acceptSuggestion(suggestion: AutoCompleteEngine.Suggestion) {
+        val cursor = cursorPosition().coerceIn(0, editText.length())
+        val editable = editText.text
+        var start = cursor
+
+        if (suggestion.replacePrefix) {
+            while (start > 0) {
+                val character = editable[start - 1]
+                if (!character.isLetterOrDigit() && character != '_') break
+                start--
+            }
+        }
+
+        editable.replace(start, cursor, suggestion.insertion)
+        val newCursor = (start + suggestion.insertion.length).coerceAtMost(editable.length)
+        editText.setSelection(newCursor)
+
+        if (suggestion.insertion.endsWith("()") && newCursor > 0) {
+            editText.setSelection(newCursor - 1)
+        }
+    }
+
     fun setFontSize(sizeSp: Float) {
         editText.textSize = sizeSp
         lineNumbers.textSize = (sizeSp - 1f).coerceAtLeast(8f)

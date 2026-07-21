@@ -6,5 +6,7 @@ data class EditorTab(
     var title: String,
     var text: String = "",
     var uri: Uri? = null,
-    var dirty: Boolean = false
+    var dirty: Boolean = false,
+    var cursorPosition: Int = 0,
+    var scrollY: Int = 0
 )

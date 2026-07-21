@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -37,6 +39,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var inputLayout: TextInputLayout
     private lateinit var consoleInput: TextInputEditText
     private lateinit var timeView: TextView
+    private lateinit var suggestionButton: MaterialButton
+
+    private val autosaveHandler = Handler(Looper.getMainLooper())
+    private lateinit var workspaceStore: WorkspaceStore
+    private var currentSuggestion: AutoCompleteEngine.Suggestion? = null
+    private var hasRestoredWorkspace = false
+
+    private val autosaveRunnable = Runnable {
+        saveWorkspace(showStatus = true)
+    }
 
     private val tabs = mutableListOf<EditorTab>()
     private var activeTabIndex = 0
@@ -100,14 +112,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        workspaceStore = WorkspaceStore(this)
         bindViews()
         configureButtons()
         configureEditor()
         configureConsoleInput()
         configureToolbar()
 
-        newTab("main.py", EXAMPLES.first().second)
+        hasRestoredWorkspace = restoreWorkspace()
+        if (!hasRestoredWorkspace) {
+            newTab("main.py", EXAMPLES.first().second)
+        }
         applySettings()
+        preferences.edit().putBoolean("clean_shutdown", false).apply()
     }
 
     override fun onStart() {
@@ -122,13 +139,26 @@ class MainActivity : AppCompatActivity() {
         receiverRegistered = true
     }
 
+    override fun onPause() {
+        saveWorkspace(showStatus = false)
+        super.onPause()
+    }
+
     override fun onStop() {
         if (receiverRegistered) {
             unregisterReceiver(runnerReceiver)
             receiverRegistered = false
         }
 
+        saveWorkspace(showStatus = false)
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        autosaveHandler.removeCallbacks(autosaveRunnable)
+        saveWorkspace(showStatus = false)
+        preferences.edit().putBoolean("clean_shutdown", true).apply()
+        super.onDestroy()
     }
 
     private fun bindViews() {
@@ -139,6 +169,7 @@ class MainActivity : AppCompatActivity() {
         inputLayout = findViewById(R.id.inputLayout)
         consoleInput = findViewById(R.id.consoleInput)
         timeView = findViewById(R.id.executionTime)
+        suggestionButton = findViewById(R.id.suggestionButton)
     }
 
     private fun configureButtons() {
@@ -162,6 +193,13 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.quickNew).setOnClickListener {
             createUntitledTab()
         }
+
+        suggestionButton.setOnClickListener {
+            currentSuggestion?.let { suggestion ->
+                editor.acceptSuggestion(suggestion)
+                updateSuggestion()
+            }
+        }
     }
 
     private fun configureEditor() {
@@ -172,7 +210,11 @@ class MainActivity : AppCompatActivity() {
 
             tabs[activeTabIndex].text = text
             tabs[activeTabIndex].dirty = true
+            tabs[activeTabIndex].cursorPosition = editor.cursorPosition()
+            tabs[activeTabIndex].scrollY = editor.scrollPositionY()
             renderTabs()
+            updateSuggestion()
+            scheduleAutosave()
         }
     }
 
@@ -252,11 +294,21 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        if (activeTabIndex in tabs.indices) {
+            tabs[activeTabIndex].cursorPosition = editor.cursorPosition()
+            tabs[activeTabIndex].scrollY = editor.scrollPositionY()
+        }
+
         activeTabIndex = index.coerceIn(tabs.indices)
         suppressEditorChanges = true
         editor.setText(currentTab().text)
+        editor.restorePosition(
+            currentTab().cursorPosition,
+            currentTab().scrollY
+        )
         suppressEditorChanges = false
         renderTabs()
+        updateSuggestion()
     }
 
     private fun renderTabs() {
@@ -302,6 +354,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        saveWorkspace(showStatus = false)
+        saveCurrentUriSilently()
         console.text = ""
         timeView.text = getString(R.string.running)
 
@@ -618,7 +672,96 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun scheduleAutosave() {
+        autosaveHandler.removeCallbacks(autosaveRunnable)
+        autosaveHandler.postDelayed(autosaveRunnable, AUTOSAVE_DELAY_MS)
+    }
+
+    private fun saveWorkspace(showStatus: Boolean) {
+        if (tabs.isEmpty() || !::workspaceStore.isInitialized) return
+
+        if (activeTabIndex in tabs.indices) {
+            tabs[activeTabIndex].text = editor.text()
+            tabs[activeTabIndex].cursorPosition = editor.cursorPosition()
+            tabs[activeTabIndex].scrollY = editor.scrollPositionY()
+        }
+
+        workspaceStore.save(
+            tabs = tabs,
+            activeTabIndex = activeTabIndex,
+            consoleText = console.text.toString()
+        )
+        saveCurrentUriSilently()
+
+        if (showStatus && timeView.text.toString() != getString(R.string.running)) {
+            timeView.text = "Auto-saved"
+        }
+    }
+
+    private fun saveCurrentUriSilently() {
+        if (tabs.isEmpty()) return
+        val tab = currentTab()
+        val uri = tab.uri ?: return
+
+        runCatching {
+            contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { writer ->
+                writer.write(tab.text)
+            } ?: return@runCatching
+            tab.dirty = false
+        }
+    }
+
+    private fun restoreWorkspace(): Boolean {
+        val snapshot = workspaceStore.load() ?: return false
+        if (snapshot.tabs.isEmpty()) return false
+
+        tabs.clear()
+        tabs.addAll(snapshot.tabs)
+        console.text = snapshot.consoleText
+        activeTabIndex = snapshot.activeTabIndex.coerceIn(tabs.indices)
+        switchTab(activeTabIndex)
+
+        val wasClean = preferences.getBoolean("clean_shutdown", true)
+        timeView.text = if (wasClean) "Workspace restored" else "Recovered after shutdown"
+
+        if (!wasClean) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Work recovered")
+                .setMessage("PyNative Studio restored your tabs and unsaved code from the last auto-save.")
+                .setPositiveButton("Continue", null)
+                .show()
+        }
+        return true
+    }
+
+    private fun updateSuggestion() {
+        if (tabs.isEmpty()) {
+            hideSuggestion()
+            return
+        }
+
+        currentSuggestion = AutoCompleteEngine.suggest(
+            source = editor.text(),
+            cursor = editor.cursorPosition()
+        )
+
+        val suggestion = currentSuggestion
+        if (suggestion == null) {
+            hideSuggestion()
+        } else {
+            suggestionButton.text = "Tap to insert: ${suggestion.label}"
+            suggestionButton.visibility = View.VISIBLE
+        }
+    }
+
+    private fun hideSuggestion() {
+        currentSuggestion = null
+        suggestionButton.visibility = View.GONE
+    }
+
     companion object {
+        private const val AUTOSAVE_DELAY_MS = 2_000L
+
         val EXAMPLES = listOf(
             "Hello world" to
                 "print(\"Hello from real CPython on Android!\")\n",
