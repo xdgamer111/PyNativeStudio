@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PyNative Studio</string>
     <string name="new_file">New</string>
@@ -6,4 +7,6 @@
     <string name="save_as">Save as</string>
     <string name="run">Run</string>
     <string name="stop">Stop</string>
+    <string name="ready">Ready</string>
+    <string name="running">Running…</string>
 </resources>
