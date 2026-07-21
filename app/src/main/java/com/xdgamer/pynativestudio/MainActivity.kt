@@ -56,7 +56,11 @@ class MainActivity : AppCompatActivity() {
         editor = findViewById(R.id.editor); tabsView = findViewById(R.id.tabs); console = findViewById(R.id.console)
         consoleScroll = findViewById(R.id.consoleScroll); inputLayout = findViewById(R.id.inputLayout)
         consoleInput = findViewById(R.id.consoleInput); timeView = findViewById(R.id.executionTime)
-        findViewById<android.view.View>(R.id.clearConsole).setOnClickListener { console.text = "" }
+        findViewById<android.view.View>(R.id.clearConsole).setOnClickListener { console.text = ""; timeView.text = "Ready" }
+        findViewById<android.view.View>(R.id.quickRun).setOnClickListener { runCode() }
+        findViewById<android.view.View>(R.id.quickStop).setOnClickListener { startService(Intent(this, PythonRunnerService::class.java).setAction(PythonRunnerService.ACTION_STOP)) }
+        findViewById<android.view.View>(R.id.quickSave).setOnClickListener { if (tabs[active].uri != null) saveToUri(tabs[active].uri!!) else saveFile.launch(tabs[active].title) }
+        findViewById<android.view.View>(R.id.quickNew).setOnClickListener { newTab("untitled${tabs.size + 1}.py", "") }
         editor.setOnContentChanged { if (!suppressChanges && tabs.isNotEmpty()) { tabs[active].text = it; tabs[active].dirty = true; renderTabs() } }
         consoleInput.setOnEditorActionListener { _, id, _ ->
             if (id == EditorInfo.IME_ACTION_DONE) { submitInput(); true } else false
@@ -94,9 +98,9 @@ class MainActivity : AppCompatActivity() {
     private fun renderTabs() {
         tabsView.removeAllViews()
         tabs.forEachIndexed { i, tab ->
-            Button(this).apply {
+            com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                 text = (if (i == active) "● " else "") + tab.title + if (tab.dirty) " *" else ""
-                isAllCaps = false; setOnClickListener { switchTab(i) }
+                isAllCaps = false; cornerRadius = 28; setOnClickListener { switchTab(i) }
                 setOnLongClickListener { if (tabs.size > 1) { tabs.removeAt(i); switchTab(active.coerceAtMost(tabs.lastIndex)) }; true }
                 tabsView.addView(this)
             }
@@ -127,7 +131,7 @@ class MainActivity : AppCompatActivity() {
         rememberRecent(uri); renderTabs(); Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
     }
     private fun rememberRecent(uri: Uri) {
-        val recent = prefs.getStringSet("recent", emptySet())!!.toMutableSet(); recent += uri.toString(); prefs.edit().putStringSet("recent", recent.takeLast(12).toSet()).apply()
+        val recent = prefs.getStringSet("recent", emptySet())!!.toMutableSet(); recent += uri.toString(); prefs.edit().putStringSet("recent", recent.toList().takeLast(12).toSet()).apply()
     }
     private fun promptRename() {
         val field = EditText(this).apply { setText(tabs[active].title) }

@@ -4,5 +4,8 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:statusBarColor">?attr/colorSurfaceContainer</item>
     </style>
 </resources>
